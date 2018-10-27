@@ -2,6 +2,12 @@
 name = "git-summary-rs"
 version = "0.1.0"
 authors = ["Scott Schroeder <scottschroeder@sent.com>"]
-edition = "2018"
+edition = "2015"
 
 [dependencies]
+clap = "2.32.0"
+failure = "0.1.2"
+log = "0.4"
+pretty_env_logger = "0.2"
+walkdir = "2"
+git2 = "0.7"
