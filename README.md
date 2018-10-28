@@ -1,6 +1,8 @@
 # git-summary
 Scan a directory recursively for git repos, and print the status of each.
 
+[![dependency status](https://deps.rs/repo/github/scottschroeder/git-summary-rs/status.svg)](https://deps.rs/repo/github/scottschroeder/git-summary-rs)
+
 ## History
 - Inspired from https://github.com/albenik/git-summary
 - Which essentially came from: https://github.com/MirkoLedda/git-summary
