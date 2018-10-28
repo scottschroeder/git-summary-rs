@@ -2,7 +2,6 @@ use std::path;
 use std::env;
 use std::fs;
 use walkdir::WalkDir;
-use std::borrow::Cow;
 
 use ::Result;
 
@@ -22,7 +21,7 @@ pub fn get_working_dir(user_path: Option<&str>) -> Result<path::PathBuf> {
     }
 }
 
-pub fn shorten<'a, PB>(base: PB, full: &'a path::Path) -> &'a path::Path
+pub fn shorten<PB>(base: PB, full: &path::Path) -> &path::Path
     where PB: AsRef<path::Path>,
 {
     full
@@ -30,7 +29,7 @@ pub fn shorten<'a, PB>(base: PB, full: &'a path::Path) -> &'a path::Path
         .unwrap_or(full)
 }
 
-pub fn get_all_repos_iter<P: AsRef<path::Path>>(src_path: P, deep: bool) -> impl Iterator<Item=path::PathBuf> {
+pub fn get_all_repos<P: AsRef<path::Path>>(src_path: P, deep: bool) -> impl Iterator<Item=path::PathBuf> {
     WalkDir::new(src_path.as_ref())
         .follow_links(true)
         .into_iter()
@@ -44,10 +43,6 @@ pub fn get_all_repos_iter<P: AsRef<path::Path>>(src_path: P, deep: bool) -> impl
             }
             None
         })
-}
-
-pub fn get_all_repos<P: AsRef<path::Path>>(src_path: P, deep: bool) -> Vec<path::PathBuf> {
-    get_all_repos_iter(src_path, deep).collect()
 }
 
 // TODO refactor

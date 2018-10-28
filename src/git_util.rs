@@ -1,10 +1,10 @@
 use git2;
-use std::path::Path;
 
 use ::Result;
 use std::fmt;
 use url;
 use ::net_util::{tcp_check, SocketData};
+use ::cache::Cache;
 
 
 #[derive(Debug, Default, PartialEq)]
@@ -88,7 +88,7 @@ fn uncommitted_changes() -> git2::Status {
 }
 
 
-pub fn summarize_one_git_repo(repo: &git2::Repository, fetch: bool) -> Result<RepoStatus> {
+pub fn summarize_one_git_repo(repo: &git2::Repository, fetch: bool, netcache: Cache<SocketData, bool>) -> Result<RepoStatus> {
 
     let head = repo.head()?;
     let head_oid = head.resolve()?.target().ok_or_else(|| format_err!("Unable to resolve OID for head"))?;
@@ -98,7 +98,7 @@ pub fn summarize_one_git_repo(repo: &git2::Repository, fetch: bool) -> Result<Re
     if let Ok((mut upstream_oid, upstream_ref)) = repo.revparse_ext("@{u}") {
         if fetch {
             if let Some(gitref) = upstream_ref {
-                match do_fetch(repo, gitref) {
+                match do_fetch(repo, gitref, netcache) {
                     Ok(()) => (),
                     Err(e) => {
                         error!("Could not fetch {}: {}", repo.workdir().unwrap().display(), e);
@@ -131,7 +131,7 @@ pub fn summarize_one_git_repo(repo: &git2::Repository, fetch: bool) -> Result<Re
     Ok(status)
 }
 
-fn do_fetch(repo: &git2::Repository, upstream_ref: git2::Reference) -> Result<()> {
+fn do_fetch(repo: &git2::Repository, upstream_ref: git2::Reference, netcache: Cache<SocketData, bool>) -> Result<()> {
     let (mut remote, remote_branch) = parse_remote_from_ref(upstream_ref)
         .and_then(|(remote_name, remote_branch)| {
             repo.find_remote(&remote_name)
@@ -146,12 +146,13 @@ fn do_fetch(repo: &git2::Repository, upstream_ref: git2::Reference) -> Result<()
         match get_url_host(url_string) {
             Ok(socket_data) => {
                 debug!("Got socket data: {:?}", socket_data);
-                if !tcp_check(&socket_data) {
+                let reachable = netcache.get(&socket_data, tcp_check);
+                if !reachable {
                     bail!("I can't reach the host: {:?}", &socket_data.host);
                 }
             }
             Err(e) => {
-                debug!("Can't parse url {:?}, assuming git knows what to do...", url_string);
+                debug!("Can't parse url {:?} ({}), assuming git knows what to do...", url_string, e);
             }
         }
     }
@@ -190,5 +191,18 @@ fn parse_remote_from_ref(gitref: git2::Reference) -> Result<(String, String)> {
             })
     } else {
         bail!("git reference is not a remote object");
+    }
+}
+
+pub fn branch_name(repo: &git2::Repository) -> Result<Option<String>> {
+    let path = repo.workdir().unwrap();
+    let h = repo.head()?;
+    if h.is_branch() {
+        let branch = h.shorthand()
+            .ok_or_else(|| format_err!("branch name was not valid UTF-8: {}", path.display()))?;
+        Ok(Some(branch.to_owned()))
+    } else {
+        warn!("Excluding detached HEAD: {}", path.display());
+        Ok(None)
     }
 }

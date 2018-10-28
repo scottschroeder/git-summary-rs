@@ -3,21 +3,22 @@ use std::time::Duration;
 use std::net::{TcpStream, ToSocketAddrs, SocketAddr};
 
 use std::io;
-use std::option;
 use std::vec;
 
-use std::collections::HashMap;
 
 // TODO configurable
 const TCP_TIMEOUT: Duration = Duration::from_secs(5);
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SocketData {
     pub host: url::Host,
     pub port: u16,
 }
 
 // TODO display for SocketData
+
+
+// TODO Create NetCache
 
 impl ToSocketAddrs for SocketData {
     type Iter = vec::IntoIter<SocketAddr>;
@@ -37,7 +38,7 @@ impl ToSocketAddrs for SocketData {
     }
 }
 
-pub fn tcp_check(sd: &SocketData) -> bool {
+pub fn tcp_check<T: ToSocketAddrs>(sd: T) -> bool {
     sd.to_socket_addrs()
         .and_then(|addrs| {
             for addr in addrs {
