@@ -10,7 +10,6 @@ const GIT_DIR: &str = ".git";
 pub fn get_working_dir(user_path: Option<&str>) -> Result<path::PathBuf> {
     if let Some(s) = user_path {
         let p = fs::canonicalize(s)?;
-        trace!("Using real path: {:?}", p);
         let meta = p.metadata()?;
         if !meta.is_dir() {
             bail!("the path {:?} is not a directory", p);
