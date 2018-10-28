@@ -4,6 +4,7 @@ use git_util::{RepoSeverity, RepoStatus};
 
 pub struct ResultsTable {
     table: Table,
+    has_rows: bool,
 }
 
 impl ResultsTable {
@@ -13,10 +14,13 @@ impl ResultsTable {
         table.set_titles(Row::new(vec![
             Cell::new("Repositories").with_style(Attr::Bold),
             Cell::new("Branch").with_style(Attr::Bold),
-            Cell::new("State").with_style(Attr::Bold),
+            Cell::new("Status").with_style(Attr::Bold),
         ]));
 
-        ResultsTable { table }
+        ResultsTable {
+            table,
+            has_rows: false,
+        }
     }
 
     pub fn add_repo(&mut self, repo_name: &str, branch: &str, status: RepoStatus) {
@@ -26,10 +30,15 @@ impl ResultsTable {
             Cell::new(branch).with_style(Attr::ForegroundColor(color)),
             Cell::new(&format!("{}", status)).with_style(Attr::ForegroundColor(color)),
         ]));
+        self.has_rows = true
     }
 
     pub fn printstd(&self) -> usize {
-        self.table.printstd()
+        if self.has_rows {
+            self.table.printstd()
+        } else {
+            0
+        }
     }
 }
 

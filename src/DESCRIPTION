@@ -1,0 +1,9 @@
+Runs a "git status" like operation in an entire directory tree.
+
+Status Legend:
+ ? - Untracked files
+ + - Uncommitted new files
+ M - Modified files
+ ^ - Your branch is ahead of upstream
+ v - Your branch is behind of upstream
+ X - Issue attempting to fetch from upstream

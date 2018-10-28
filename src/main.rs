@@ -28,27 +28,48 @@ fn run() -> Result<()> {
     let args = get_args();
     setup_logger(args.occurrences_of("verbosity"));
     trace!("Args: {:?}", args);
-    let local_only = args.is_present("local_only");
+    let do_fetch = args.is_present("fetch");
+
+    let pool_size = if let Some(p_str) = args.value_of("parallel") {
+        p_str.parse::<usize>().map_err(|e| format_err!("Could not parse {:?} as integer: {}", p_str, e))?
+    } else {
+        THREAD_POOL_SIZE
+    };
 
     rayon::ThreadPoolBuilder::new()
-        .num_threads(THREAD_POOL_SIZE)
+        .num_threads(pool_size)
         .build_global()?;
 
     let path = fs_util::get_working_dir(args.value_of("path"))?;
     debug!("Looking for git repos under {:?}", path);
 
-    let git_repos =
-        fs_util::get_all_repos(&path, args.is_present("deep_lookup")).collect::<Vec<_>>();
+    let git_repos = {
+        let mut git_paths = fs_util::get_all_repos(
+            &path,
+            !args.is_present("shallow"),
+            args.is_present("check_hidden"),
+        );
+        git_paths.sort();
+        git_paths.dedup();
+        git_paths
+    };
+
+    if args.is_present("list_repos") {
+        for p in git_repos {
+            println!("{}", p.display())
+        }
+        return Ok(());
+    }
 
     let netcache = cache::Cache::default();
 
-    let repos = git_repos
+    let mut repos = git_repos
         .par_iter()
         .map(|p| {
             git2::Repository::open(p)
                 .map_err(|e| e.into())
-                .and_then(|repo| {
-                    git_util::branch_name(&repo).map(|branch_opt| branch_opt.map(|b| (p, repo, b)))
+                .map(|repo| {
+                    git_util::branch_name(&repo).map(|b| (p, repo, b))
                 })
         })
         .filter_map(|res| match res {
@@ -58,24 +79,27 @@ fn run() -> Result<()> {
         })
         .map(|res| {
             res.and_then(|(p, repo, branch)| {
-                git_util::summarize_one_git_repo(&repo, !local_only, netcache.clone())
+                git_util::summarize_one_git_repo(&repo, do_fetch, netcache.clone())
                     .map(|st| (p, branch, st))
             })
         })
+        .filter_map(|res| match res {
+            Ok(x) => Some(x),
+            Err(e) => {
+                error!("{}", e);
+                None
+            }
+        })
         .collect::<Vec<_>>();
 
-    // TODO sort repos by path
+    repos.sort_unstable_by_key(|d| d.0);
 
     let mut table = results_table::ResultsTable::new();
-    for res in repos {
-        match res {
-            Ok((p, branch, st)) => {
-                if !args.is_present("skip_up_to_date") || !st.is_clean() {
-                    let repo_name = fs_util::shorten(&path, &p).to_string_lossy();
-                    table.add_repo(&repo_name, &branch, st);
-                }
-            }
-            Err(e) => error!("{}", e),
+    info!("Checked {} git repositories.", repos.len());
+    for (p, branch, st) in repos {
+        if !args.is_present("skip_up_to_date") || !st.is_clean() {
+            let repo_name = fs_util::shorten(&path, &p).to_string_lossy();
+            table.add_repo(&repo_name, &branch, st);
         }
     }
     table.printstd();
@@ -92,26 +116,46 @@ fn main() {
     }
 }
 
+const LONG_ABOUT: &str = include_str!("DESCRIPTION");
+
 fn get_args() -> clap::ArgMatches<'static> {
     App::new(PROJECT_NAME)
         .setting(clap::AppSettings::DeriveDisplayOrder)
+        .about("Run 'git status' on entire directory tree")
+        .long_about(LONG_ABOUT)
         .arg(
             Arg::with_name("verbosity")
                 .short("v")
                 .multiple(true)
-                .help("Sets the level of verbosity"),
+                .help("Sets the level of verbosity (-v warn, -vv info, -vvv debug, -vvvv trace)"),
         ).arg(
-        Arg::with_name("local_only")
+        Arg::with_name("list_repos")
             .short("l")
-            .help("Local operation only. Without this the script runs \"git fetch\" in each repo before checking for unpushed/unpulled commits."),
-    ).arg(
-        Arg::with_name("deep_lookup")
-            .short("d")
-            .help("Deep lookup. Will search within the entire tree of the current folder."),
+            .long("list")
+            .help("Just print a list of all git repos"),
     ).arg(
         Arg::with_name("skip_up_to_date")
             .short("q")
+            .long("quiet")
             .help("Print nothing for repos that are up to date."),
+    ).arg(
+        Arg::with_name("fetch")
+            .short("f")
+            .long("fetch")
+            .help("Perform a 'git fetch' in each repo before checking for unpushed/unpulled commits."),
+    ).arg(
+        Arg::with_name("check_hidden")
+            .long("hidden")
+            .help("Check for git repos in hidden directories"),
+    ).arg(
+        Arg::with_name("shallow")
+            .long("shallow")
+            .help("Only search the directory provided, do NOT recurse."),
+    ).arg(
+        Arg::with_name("parallel")
+            .long("parallel")
+            .takes_value(true)
+            .help("Max number of workers"),
     ).arg(
         Arg::with_name("path")
             .index(1)

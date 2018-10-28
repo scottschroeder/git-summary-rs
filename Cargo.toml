@@ -1,5 +1,5 @@
 [package]
-name = "git-summary-rs"
+name = "git-summary"
 version = "0.1.0"
 authors = ["Scott Schroeder <scottschroeder@sent.com>"]
 edition = "2015"

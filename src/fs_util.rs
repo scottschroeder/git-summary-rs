@@ -32,25 +32,31 @@ where
 pub fn get_all_repos<P: AsRef<path::Path>>(
     src_path: P,
     deep: bool,
-) -> impl Iterator<Item = path::PathBuf> {
+    do_hidden: bool,
+) -> Vec<path::PathBuf> {
+
     WalkDir::new(src_path.as_ref())
         .follow_links(true)
         .into_iter()
-        .filter_entry(move |e| !deep_filter(deep, e))
+        .filter_entry(move |e| !deep_filter(deep, !do_hidden, e))
         .filter_map(|entry| {
             if let Ok(entry) = entry {
                 if is_git_dir(&entry) {
-                    let git_repo = entry.path().parent().unwrap();
-                    return Some(git_repo.to_owned());
+                    let git_repo = fs::canonicalize(
+                        entry.path().parent().unwrap()
+                    ).unwrap();
+
+                    return Some(git_repo);
                 }
             }
             None
         })
+        .collect()
 }
 
 // TODO refactor
-fn deep_filter(deep: bool, entry: &walkdir::DirEntry) -> bool {
-    if is_hidden(entry) {
+fn deep_filter(deep: bool, skip_hidden: bool, entry: &walkdir::DirEntry) -> bool {
+    if skip_hidden && is_hidden(entry) {
         //trace!("Filtering {:?} (hidden)", entry.path().display());
         return true;
     }

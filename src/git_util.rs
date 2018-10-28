@@ -91,7 +91,7 @@ pub fn summarize_one_git_repo(
     fetch: bool,
     netcache: Cache<SocketData, bool>,
 ) -> Result<RepoStatus> {
-    let head = repo.head()?;
+    let head = repo.head().unwrap();
     let head_oid = head
         .resolve()?
         .target()
@@ -103,7 +103,10 @@ pub fn summarize_one_git_repo(
         if fetch {
             if let Some(gitref) = upstream_ref {
                 match do_fetch(repo, gitref, netcache) {
-                    Ok(()) => (),
+                    Ok(()) => {
+                        let (new_upstream_oid, _) = repo.revparse_ext("@{u}")?;
+                        upstream_oid = new_upstream_oid;
+                    },
                     Err(e) => {
                         error!(
                             "Could not fetch {}: {}",
@@ -127,13 +130,13 @@ pub fn summarize_one_git_repo(
     //debug!("aggregate status: {:?}", aggregate_status);
 
     if git2::Status::WT_NEW.intersects(aggregate_status) {
-        status.untracked_files = true
+        status.untracked_files = true;
     }
     if git2::Status::INDEX_NEW.intersects(aggregate_status) {
-        status.new_files = true
+        status.new_files = true;
     }
     if uncommitted_changes().intersects(aggregate_status) {
-        status.uncommited_changes = true
+        status.uncommited_changes = true;
     }
 
     Ok(status)
@@ -162,10 +165,9 @@ fn do_fetch(
 
         match get_url_host(url_string) {
             Ok(socket_data) => {
-                debug!("Got socket data: {:?}", socket_data);
                 let reachable = netcache.get(&socket_data, tcp_check);
                 if !reachable {
-                    bail!("I can't reach the host: {:?}", &socket_data.host);
+                    bail!("I can't reach the host: {:?}", &socket_data);
                 }
             }
             Err(e) => {
@@ -211,16 +213,20 @@ fn parse_remote_from_ref(gitref: git2::Reference) -> Result<(String, String)> {
     }
 }
 
-pub fn branch_name(repo: &git2::Repository) -> Result<Option<String>> {
+
+pub fn branch_name(repo: &git2::Repository) -> Option<String> {
     let path = repo.workdir().unwrap();
-    let h = repo.head()?;
-    if h.is_branch() {
-        let branch = h
-            .shorthand()
-            .ok_or_else(|| format_err!("branch name was not valid UTF-8: {}", path.display()))?;
-        Ok(Some(branch.to_owned()))
-    } else {
+    let branch = repo.head().ok().and_then(|h| {
+        if h.is_branch() {
+            let branch = String::from_utf8_lossy(h.shorthand_bytes());
+            Some(branch.into())
+        } else {
+            None
+        }
+    });
+
+    if branch.is_none() {
         warn!("Excluding detached HEAD: {}", path.display());
-        Ok(None)
     }
+    branch
 }

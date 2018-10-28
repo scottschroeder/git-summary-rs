@@ -1,5 +1,6 @@
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::time::Duration;
+use std::fmt;
 use url;
 
 use std::io;
@@ -8,13 +9,23 @@ use std::vec;
 // TODO configurable
 const TCP_TIMEOUT: Duration = Duration::from_secs(5);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct SocketData {
     pub host: url::Host,
     pub port: u16,
 }
 
-// TODO display for SocketData
+impl fmt::Display for SocketData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}:{}", self.host, self.port)
+    }
+}
+
+impl fmt::Debug for SocketData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
 
 // TODO Create NetCache
 
