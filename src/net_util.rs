@@ -1,10 +1,9 @@
-use url;
+use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::time::Duration;
-use std::net::{TcpStream, ToSocketAddrs, SocketAddr};
+use url;
 
 use std::io;
 use std::vec;
-
 
 // TODO configurable
 const TCP_TIMEOUT: Duration = Duration::from_secs(5);
@@ -17,7 +16,6 @@ pub struct SocketData {
 
 // TODO display for SocketData
 
-
 // TODO Create NetCache
 
 impl ToSocketAddrs for SocketData {
@@ -26,14 +24,12 @@ impl ToSocketAddrs for SocketData {
     fn to_socket_addrs(&self) -> io::Result<Self::Iter> {
         match self.host {
             url::Host::Domain(ref s) => (s.as_ref(), self.port).to_socket_addrs(),
-            url::Host::Ipv4(ip) => {
-                (ip, self.port).to_socket_addrs()
-                    .map(|v| v.collect::<Vec<_>>().into_iter())
-            }
-            url::Host::Ipv6(ip) => {
-                (ip, self.port).to_socket_addrs()
-                    .map(|v| v.collect::<Vec<_>>().into_iter())
-            }
+            url::Host::Ipv4(ip) => (ip, self.port)
+                .to_socket_addrs()
+                .map(|v| v.collect::<Vec<_>>().into_iter()),
+            url::Host::Ipv6(ip) => (ip, self.port)
+                .to_socket_addrs()
+                .map(|v| v.collect::<Vec<_>>().into_iter()),
         }
     }
 }
@@ -47,6 +43,6 @@ pub fn tcp_check<T: ToSocketAddrs>(sd: T) -> bool {
                 return Ok(true);
             }
             Ok(false)
-        }).unwrap_or(false)
+        })
+        .unwrap_or(false)
 }
-

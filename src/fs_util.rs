@@ -1,9 +1,9 @@
-use std::path;
 use std::env;
 use std::fs;
+use std::path;
 use walkdir::WalkDir;
 
-use ::Result;
+use Result;
 
 const GIT_DIR: &str = ".git";
 
@@ -22,14 +22,17 @@ pub fn get_working_dir(user_path: Option<&str>) -> Result<path::PathBuf> {
 }
 
 pub fn shorten<PB>(base: PB, full: &path::Path) -> &path::Path
-    where PB: AsRef<path::Path>,
+where
+    PB: AsRef<path::Path>,
 {
-    full
-        .strip_prefix(base.as_ref().parent().unwrap_or(base.as_ref()))
+    full.strip_prefix(base.as_ref().parent().unwrap_or(base.as_ref()))
         .unwrap_or(full)
 }
 
-pub fn get_all_repos<P: AsRef<path::Path>>(src_path: P, deep: bool) -> impl Iterator<Item=path::PathBuf> {
+pub fn get_all_repos<P: AsRef<path::Path>>(
+    src_path: P,
+    deep: bool,
+) -> impl Iterator<Item = path::PathBuf> {
     WalkDir::new(src_path.as_ref())
         .follow_links(true)
         .into_iter()
@@ -63,21 +66,20 @@ fn deep_filter(deep: bool, entry: &walkdir::DirEntry) -> bool {
 }
 
 fn is_git_dir(entry: &walkdir::DirEntry) -> bool {
-    check_entry_filename(entry, |s| {
-        s == GIT_DIR
-    })
+    check_entry_filename(entry, |s| s == GIT_DIR)
 }
 
 fn is_hidden(entry: &walkdir::DirEntry) -> bool {
-    check_entry_filename(entry, |s| {
-        s.starts_with(".") && !(s == GIT_DIR)
-    })
+    check_entry_filename(entry, |s| s.starts_with(".") && !(s == GIT_DIR))
 }
 
 fn check_entry_filename<F>(entry: &walkdir::DirEntry, predicate: F) -> bool
-    where F: FnOnce(&str) -> bool
+where
+    F: FnOnce(&str) -> bool,
 {
-    entry.file_name().to_str()
+    entry
+        .file_name()
+        .to_str()
         .map(predicate)
         .unwrap_or_else(|| {
             error!("unable to parse {:?} as str", entry.path().display());

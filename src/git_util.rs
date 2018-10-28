@@ -1,11 +1,10 @@
 use git2;
 
-use ::Result;
+use cache::Cache;
+use net_util::{tcp_check, SocketData};
 use std::fmt;
 use url;
-use ::net_util::{tcp_check, SocketData};
-use ::cache::Cache;
-
+use Result;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct RepoStatus {
@@ -87,11 +86,16 @@ fn uncommitted_changes() -> git2::Status {
         | Status::CONFLICTED
 }
 
-
-pub fn summarize_one_git_repo(repo: &git2::Repository, fetch: bool, netcache: Cache<SocketData, bool>) -> Result<RepoStatus> {
-
+pub fn summarize_one_git_repo(
+    repo: &git2::Repository,
+    fetch: bool,
+    netcache: Cache<SocketData, bool>,
+) -> Result<RepoStatus> {
     let head = repo.head()?;
-    let head_oid = head.resolve()?.target().ok_or_else(|| format_err!("Unable to resolve OID for head"))?;
+    let head_oid = head
+        .resolve()?
+        .target()
+        .ok_or_else(|| format_err!("Unable to resolve OID for head"))?;
 
     let mut status = RepoStatus::default();
 
@@ -101,7 +105,11 @@ pub fn summarize_one_git_repo(repo: &git2::Repository, fetch: bool, netcache: Ca
                 match do_fetch(repo, gitref, netcache) {
                     Ok(()) => (),
                     Err(e) => {
-                        error!("Could not fetch {}: {}", repo.workdir().unwrap().display(), e);
+                        error!(
+                            "Could not fetch {}: {}",
+                            repo.workdir().unwrap().display(),
+                            e
+                        );
                         status.err_check = true;
                     }
                 }
@@ -131,12 +139,21 @@ pub fn summarize_one_git_repo(repo: &git2::Repository, fetch: bool, netcache: Ca
     Ok(status)
 }
 
-fn do_fetch(repo: &git2::Repository, upstream_ref: git2::Reference, netcache: Cache<SocketData, bool>) -> Result<()> {
-    let (mut remote, remote_branch) = parse_remote_from_ref(upstream_ref)
-        .and_then(|(remote_name, remote_branch)| {
+fn do_fetch(
+    repo: &git2::Repository,
+    upstream_ref: git2::Reference,
+    netcache: Cache<SocketData, bool>,
+) -> Result<()> {
+    let (mut remote, remote_branch) =
+        parse_remote_from_ref(upstream_ref).and_then(|(remote_name, remote_branch)| {
             repo.find_remote(&remote_name)
                 .map_err(|e| {
-                    format_err!("Unable to get remote {} for repo {}: {}", remote_name, repo.workdir().unwrap().display(), e)
+                    format_err!(
+                        "Unable to get remote {} for repo {}: {}",
+                        remote_name,
+                        repo.workdir().unwrap().display(),
+                        e
+                    )
                 })
                 .map(|remote| (remote, remote_branch))
         })?;
@@ -152,7 +169,10 @@ fn do_fetch(repo: &git2::Repository, upstream_ref: git2::Reference, netcache: Ca
                 }
             }
             Err(e) => {
-                debug!("Can't parse url {:?} ({}), assuming git knows what to do...", url_string, e);
+                debug!(
+                    "Can't parse url {:?} ({}), assuming git knows what to do...",
+                    url_string, e
+                );
             }
         }
     }
@@ -165,19 +185,16 @@ fn get_url_host(url_string: &str) -> Result<SocketData> {
     let git_url = url::Url::parse(url_string)?;
 
     if let url::Origin::Tuple(_, host, port) = git_url.origin() {
-        return Ok(SocketData {
-            host,
-            port,
-        });
+        return Ok(SocketData { host, port });
     }
 
     Err(format_err!("can not understand url: {:?}", git_url))
 }
 
-
 fn parse_remote_from_ref(gitref: git2::Reference) -> Result<(String, String)> {
     if gitref.is_remote() {
-        gitref.name()
+        gitref
+            .name()
             .ok_or_else(|| format_err!("gitref can not be coreced into a string to parse"))
             .and_then(|refspec| {
                 let segments = refspec.split('/').collect::<Vec<&str>>();
@@ -198,7 +215,8 @@ pub fn branch_name(repo: &git2::Repository) -> Result<Option<String>> {
     let path = repo.workdir().unwrap();
     let h = repo.head()?;
     if h.is_branch() {
-        let branch = h.shorthand()
+        let branch = h
+            .shorthand()
             .ok_or_else(|| format_err!("branch name was not valid UTF-8: {}", path.display()))?;
         Ok(Some(branch.to_owned()))
     } else {

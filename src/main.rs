@@ -3,28 +3,26 @@ extern crate clap;
 extern crate failure;
 #[macro_use]
 extern crate log;
-extern crate pretty_env_logger;
-extern crate walkdir;
 extern crate git2;
-extern crate url;
-extern crate rayon;
+extern crate pretty_env_logger;
 extern crate prettytable;
+extern crate rayon;
+extern crate url;
+extern crate walkdir;
 
 use clap::{App, Arg};
 use rayon::prelude::*;
 
+mod cache;
 mod fs_util;
 mod git_util;
 mod net_util;
-mod cache;
 mod results_table;
 
 const PROJECT_NAME: &str = "git-summary";
-const THREAD_POOL_SIZE: usize = 50; // its all I/O, so bump it
+const THREAD_POOL_SIZE: usize = 50; // its all I/O, so bump it (and wish we were async)
 
 type Result<T> = std::result::Result<T, failure::Error>;
-
-
 
 fn run() -> Result<()> {
     let args = get_args();
@@ -39,27 +37,24 @@ fn run() -> Result<()> {
     let path = fs_util::get_working_dir(args.value_of("path"))?;
     debug!("Looking for git repos under {:?}", path);
 
-
-    let git_repos = fs_util::get_all_repos(&path, args.is_present("deep_lookup"))
-        .collect::<Vec<_>>();
+    let git_repos =
+        fs_util::get_all_repos(&path, args.is_present("deep_lookup")).collect::<Vec<_>>();
 
     let netcache = cache::Cache::default();
 
-    let repos = git_repos.par_iter()
+    let repos = git_repos
+        .par_iter()
         .map(|p| {
             git2::Repository::open(p)
                 .map_err(|e| e.into())
                 .and_then(|repo| {
-                    git_util::branch_name(&repo)
-                        .map(|branch_opt| branch_opt.map(|b| (p, repo, b)))
+                    git_util::branch_name(&repo).map(|branch_opt| branch_opt.map(|b| (p, repo, b)))
                 })
         })
-        .filter_map(|res| {
-            match res {
-                Ok(Some(x)) => Some(Ok(x)),
-                Ok(None) => None,
-                Err(e) => Some(Err(e)),
-            }
+        .filter_map(|res| match res {
+            Ok(Some(x)) => Some(Ok(x)),
+            Ok(None) => None,
+            Err(e) => Some(Err(e)),
         })
         .map(|res| {
             res.and_then(|(p, repo, branch)| {
@@ -85,12 +80,8 @@ fn run() -> Result<()> {
     }
     table.printstd();
 
-
     Ok(())
 }
-
-
-
 
 fn main() {
     if let Err(e) = run() {
@@ -127,7 +118,6 @@ fn get_args() -> clap::ArgMatches<'static> {
             .help("Path to folder containing git repos; if omitted, the current working directory is used."),
     ).get_matches()
 }
-
 
 fn setup_logger(level: u64) {
     let mut builder = pretty_env_logger::formatted_builder().unwrap();
