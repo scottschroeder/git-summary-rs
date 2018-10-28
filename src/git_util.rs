@@ -165,7 +165,7 @@ fn do_fetch(
 
         match get_url_host(url_string) {
             Ok(socket_data) => {
-                let reachable = netcache.get(&socket_data, tcp_check);
+                let reachable = netcache.get_or_insert_with(&socket_data, &tcp_check);
                 if !reachable {
                     bail!("I can't reach the host: {:?}", &socket_data);
                 }

@@ -1,5 +1,5 @@
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::default::Default;
 use std::fmt;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex, RwLock};
@@ -33,28 +33,29 @@ where
 
 impl<K, V> Cache<K, V>
 where
-    K: Hash + Eq,
+    K: Hash + Eq + Clone + fmt::Debug,
     V: Clone,
 {
-    pub fn get<F>(&self, key: &K, func: F) -> V
+    pub fn get_or_insert_with<F>(&self, key: &K, func: &F) -> V
     where
-        K: Clone + fmt::Debug,
         F: Fn(K) -> V,
     {
-        let mut created_entry = None;
+        let entry;
         let mut writer = None;
-        let lookup_entry = {
+        {
             let mut map = self.map.lock().unwrap();
-            let x = map.entry(key.clone()).or_insert_with(|| {
-                let inner = Arc::new(RwLock::new(None));
-                created_entry = Some(inner.clone());
-                writer = Some(created_entry.as_ref().unwrap().write().unwrap());
-                inner
-            });
-            x.clone()
-        };
+            match map.entry(key.clone()) {
+                Entry::Occupied(oe) => entry = oe.get().clone(),
+                Entry::Vacant(ve) => {
+                    entry = ve.insert(Arc::new(RwLock::new(None))).clone();
+                    writer = Some(entry.as_ref().write().unwrap());
+                }
+            }
+        }
 
         match writer {
+            // We are the first one, and we have the writer
+            // We need to perform the function call and store the result
             Some(mut guard) => {
                 // Stable in 1.31
                 // guard.replace(value);
@@ -63,9 +64,10 @@ where
                 guard.as_ref().unwrap().clone()
             }
 
+            // We just wait for a read lock and return the value
             None => {
                 trace!("Looking up {:?}", key);
-                lookup_entry.read().unwrap().clone().unwrap()
+                entry.read().unwrap().clone().unwrap()
             }
         }
     }

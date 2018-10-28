@@ -27,8 +27,6 @@ impl fmt::Debug for SocketData {
     }
 }
 
-// TODO Create NetCache
-
 impl ToSocketAddrs for SocketData {
     type Iter = vec::IntoIter<SocketAddr>;
 
