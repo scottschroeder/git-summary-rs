@@ -17,11 +17,13 @@ mod fs_util;
 mod git_util;
 mod net_util;
 mod cache;
+mod results_table;
 
 const PROJECT_NAME: &str = "git-summary";
 const THREAD_POOL_SIZE: usize = 50; // its all I/O, so bump it
 
 type Result<T> = std::result::Result<T, failure::Error>;
+
 
 
 fn run() -> Result<()> {
@@ -67,31 +69,15 @@ fn run() -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    let mut table = prettytable::Table::new();
-    table.set_format(*prettytable::format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-    table.set_titles(prettytable::Row::new(vec![
-        prettytable::Cell::new("Repositories")
-            .with_style(prettytable::Attr::Bold),
-        prettytable::Cell::new("Branch")
-            .with_style(prettytable::Attr::Bold),
-        prettytable::Cell::new("State")
-            .with_style(prettytable::Attr::Bold),
-    ]));
+    // TODO sort repos by path
 
+    let mut table = results_table::ResultsTable::new();
     for res in repos {
         match res {
             Ok((p, branch, st)) => {
                 if !args.is_present("skip_up_to_date") || !st.is_clean() {
                     let repo_name = fs_util::shorten(&path, &p).to_string_lossy();
-                    let color = alert_color(&st);
-                    table.add_row(prettytable::Row::new(vec![
-                        prettytable::Cell::new(&repo_name)
-                            .with_style(prettytable::Attr::ForegroundColor(color)),
-                        prettytable::Cell::new(&branch)
-                            .with_style(prettytable::Attr::ForegroundColor(color)),
-                        prettytable::Cell::new(&format!("{}", st))
-                            .with_style(prettytable::Attr::ForegroundColor(color)),
-                    ]));
+                    table.add_repo(&repo_name, &branch, st);
                 }
             }
             Err(e) => error!("{}", e),
@@ -103,14 +89,6 @@ fn run() -> Result<()> {
     Ok(())
 }
 
-fn alert_color(st: &git_util::RepoStatus) -> prettytable::color::Color {
-    match st.severity() {
-        git_util::RepoSeverity::Clean => prettytable::color::GREEN,
-        git_util::RepoSeverity::NeedSync => prettytable::color::YELLOW,
-        git_util::RepoSeverity::AheadBehind => prettytable::color::YELLOW,
-        git_util::RepoSeverity::Dirty => prettytable::color::RED,
-    }
-}
 
 
 
