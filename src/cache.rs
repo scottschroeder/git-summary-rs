@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::fmt;
 use std::default::Default;
 
 #[derive(Debug)]
 pub struct Cache<K: Hash + Eq, V> {
-    map: Arc<Mutex<HashMap<K, Arc<Mutex<Option<V>>>>>>
+    map: Arc<Mutex<HashMap<K, Arc<RwLock<Option<V>>>>>>
 }
 
 impl<K, V> Clone for Cache<K, V>
@@ -37,20 +37,20 @@ impl<K, V> Cache<K, V>
         where K: Clone + fmt::Debug,
               F: Fn(K) -> V {
         let mut created_entry = None;
-        let mut unlocked = None;
+        let mut writer = None;
         let lookup_entry = {
             let mut map = self.map.lock().unwrap();
             let x = map.entry(key.clone()).or_insert_with(|| {
-                let inner = Arc::new(Mutex::new(None));
+                let inner = Arc::new(RwLock::new(None));
                 created_entry = Some(inner.clone());
-                unlocked = Some(created_entry.as_ref().unwrap().lock().unwrap());
+                writer = Some(created_entry.as_ref().unwrap().write().unwrap());
                 inner
             });
             x.clone()
         };
 
 
-        match unlocked {
+        match writer {
             Some(mut guard) => {
                 // Stable in 1.31
                 // guard.replace(value);
@@ -61,7 +61,7 @@ impl<K, V> Cache<K, V>
 
             None => {
                 trace!("Looking up {:?}", key);
-                lookup_entry.lock().unwrap().clone().unwrap()
+                lookup_entry.read().unwrap().clone().unwrap()
             }
         }
     }
