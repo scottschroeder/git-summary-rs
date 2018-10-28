@@ -1,6 +1,6 @@
+use std::fmt;
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::time::Duration;
-use std::fmt;
 use url;
 
 use std::io;

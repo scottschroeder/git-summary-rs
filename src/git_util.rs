@@ -106,7 +106,7 @@ pub fn summarize_one_git_repo(
                     Ok(()) => {
                         let (new_upstream_oid, _) = repo.revparse_ext("@{u}")?;
                         upstream_oid = new_upstream_oid;
-                    },
+                    }
                     Err(e) => {
                         error!(
                             "Could not fetch {}: {}",
@@ -212,7 +212,6 @@ fn parse_remote_from_ref(gitref: git2::Reference) -> Result<(String, String)> {
         bail!("git reference is not a remote object");
     }
 }
-
 
 pub fn branch_name(repo: &git2::Repository) -> Option<String> {
     let path = repo.workdir().unwrap();

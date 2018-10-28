@@ -34,7 +34,6 @@ pub fn get_all_repos<P: AsRef<path::Path>>(
     deep: bool,
     do_hidden: bool,
 ) -> Vec<path::PathBuf> {
-
     WalkDir::new(src_path.as_ref())
         .follow_links(true)
         .into_iter()
@@ -42,9 +41,7 @@ pub fn get_all_repos<P: AsRef<path::Path>>(
         .filter_map(|entry| {
             if let Ok(entry) = entry {
                 if is_git_dir(&entry) {
-                    let git_repo = fs::canonicalize(
-                        entry.path().parent().unwrap()
-                    ).unwrap();
+                    let git_repo = fs::canonicalize(entry.path().parent().unwrap()).unwrap();
 
                     return Some(git_repo);
                 }

@@ -31,7 +31,9 @@ fn run() -> Result<()> {
     let do_fetch = args.is_present("fetch");
 
     let pool_size = if let Some(p_str) = args.value_of("parallel") {
-        p_str.parse::<usize>().map_err(|e| format_err!("Could not parse {:?} as integer: {}", p_str, e))?
+        p_str
+            .parse::<usize>()
+            .map_err(|e| format_err!("Could not parse {:?} as integer: {}", p_str, e))?
     } else {
         THREAD_POOL_SIZE
     };
@@ -68,9 +70,7 @@ fn run() -> Result<()> {
         .map(|p| {
             git2::Repository::open(p)
                 .map_err(|e| e.into())
-                .map(|repo| {
-                    git_util::branch_name(&repo).map(|b| (p, repo, b))
-                })
+                .map(|repo| git_util::branch_name(&repo).map(|b| (p, repo, b)))
         })
         .filter_map(|res| match res {
             Ok(Some(x)) => Some(Ok(x)),
