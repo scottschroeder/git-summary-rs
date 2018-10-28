@@ -1,16 +1,44 @@
-# git-summary-rs
-Display an overview of many repos
+# git-summary
+Scan a directory recursively for git repos, and print the status of each.
 
 ## History
 - Inspired from https://github.com/albenik/git-summary
 - Which essentially came from: https://github.com/MirkoLedda/git-summary
-- Which was origonally forked from https://github.com/lordadamson/git-summary
-- Freely distributed under the MIT license. 2018@MirkoLedda
+- Which was forked from https://gitlab.com/lordadamson/git-summary
+- Which all started with this Gist https://gist.github.com/mzabriskie/6631607
 
 ## Why re-write?
 
-When scanning golang projects, the shell version would often print
-errors from git (go vendoring tools stripped metadata). Even
-after hiding those errors, the table formatting had too much free space.
+I really liked this project, but I had quite a few repos in odd states (detached HEAD),
+and the bash script error handling left something to be desired. I also wanted to make
+tweaks to some of the behavior, and formatting.
 
-Also I like rust, and wanted to try porting a shell script over.
+## Usage
+
+```
+git-summary
+Runs a "git status" like operation in an entire directory tree.
+Status Legend:
+ ? - Untracked files
+ + - Uncommitted new files
+ M - Modified files
+ ^ - Your branch is ahead of upstream
+ v - Your branch is behind of upstream
+ X - Issue attempting to fetch from upstream
+USAGE:
+    git-summary [FLAGS] [OPTIONS] [path]
+FLAGS:
+    -v               Sets the level of verbosity (-v warn, -vv info, -vvv debug, -vvvv trace)
+    -l, --list       Just print a list of all git repos
+    -q, --quiet      Print nothing for repos that are up to date.
+    -f, --fetch      Perform a 'git fetch' in each repo before checking for unpushed/unpulled commits.
+        --hidden     Check for git repos in hidden directories
+        --shallow    Only search the directory provided, do NOT recurse.
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+OPTIONS:
+        --parallel <parallel>    Max number of workers
+ARGS:
+    <path>    Path to folder containing git repos; if omitted, the current working directory is used
+```
+
