@@ -8,22 +8,26 @@ extern crate walkdir;
 extern crate git2;
 extern crate url;
 extern crate rayon;
+extern crate prettytable;
 
 use clap::{App, Arg};
 use rayon::prelude::*;
 
 use std::cmp::max;
 use std::result::Result as StdResult;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 mod fs_util;
 mod git_util;
 mod net_util;
+mod cache;
 
 use git_util::RepoStatus;
 
 const PROJECT_NAME: &str = "git-summary";
-const STATE_WIDTH: usize = 5; // max("State".len(), flags)
+const STATE_WIDTH: usize = 5;
+// max("State".len(), flags)
+const THREAD_POOL_SIZE: usize = 50; // its all I/O, so bump it
 
 type Result<T> = std::result::Result<T, failure::Error>;
 
@@ -84,8 +88,7 @@ struct Repo<'a> {
 //
 //impl<'a> TestMe for Repo<'a> {}
 
-
-fn run() -> Result<()> {
+fn run2() -> Result<()> {
     let args = get_args();
     setup_logger(args.occurrences_of("verbosity"));
     trace!("Args: {:?}", args);
@@ -179,6 +182,104 @@ fn run() -> Result<()> {
 
 
     Ok(())
+}
+
+fn run() -> Result<()> {
+    let args = get_args();
+    setup_logger(args.occurrences_of("verbosity"));
+    trace!("Args: {:?}", args);
+    let local_only = args.is_present("local_only");
+
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(THREAD_POOL_SIZE)
+        .build_global()?;
+
+    let path = fs_util::get_working_dir(args.value_of("path"))?;
+    debug!("Looking for git repos under {:?}", path);
+
+
+    let git_repos = fs_util::get_all_repos_iter(&path, args.is_present("deep_lookup"))
+        .collect::<Vec<_>>();
+    let repos = git_repos.par_iter()
+        .map(|p| {
+            git2::Repository::open(p)
+                .map_err(|e| e.into())
+                .and_then(|repo| {
+                    branch_name(&repo)
+                        .map(|branch_opt| branch_opt.map(|b| (p, repo, b)))
+                })
+        })
+        .filter_map(|res| {
+            match res {
+                Ok(Some(x)) => Some(Ok(x)),
+                Ok(None) => None,
+                Err(e) => Some(Err(e)),
+            }
+        })
+        .map(|res| {
+            res.and_then(|(p, repo, branch)| {
+                git_util::summarize_one_git_repo(&repo, !local_only)
+                    .map(|st| (p, branch, st))
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let mut table = prettytable::Table::new();
+    table.set_format(*prettytable::format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+    table.set_titles(prettytable::Row::new(vec![
+        prettytable::Cell::new("Repositories")
+            .with_style(prettytable::Attr::Bold),
+        prettytable::Cell::new("Branch")
+            .with_style(prettytable::Attr::Bold),
+        prettytable::Cell::new("State")
+            .with_style(prettytable::Attr::Bold),
+    ]));
+
+    for res in repos {
+        match res {
+            Ok((p, branch, st)) => {
+                if !args.is_present("skip_up_to_date") || !st.is_clean() {
+                    let repo_name = fs_util::shorten(&path, &p).to_string_lossy();
+                    let color = alert_color(&st);
+                    table.add_row(prettytable::Row::new(vec![
+                        prettytable::Cell::new(&repo_name)
+                            .with_style(prettytable::Attr::ForegroundColor(color)),
+                        prettytable::Cell::new(&branch)
+                            .with_style(prettytable::Attr::ForegroundColor(color)),
+                        prettytable::Cell::new(&format!("{}", st))
+                            .with_style(prettytable::Attr::ForegroundColor(color)),
+                    ]));
+                }
+            }
+            Err(e) => error!("{}", e),
+        }
+    }
+    table.printstd();
+
+
+    Ok(())
+}
+
+fn alert_color(st: &git_util::RepoStatus) -> prettytable::color::Color {
+    match st.severity() {
+        git_util::RepoSeverity::Clean => prettytable::color::GREEN,
+        git_util::RepoSeverity::NeedSync => prettytable::color::YELLOW,
+        git_util::RepoSeverity::AheadBehind => prettytable::color::YELLOW,
+        git_util::RepoSeverity::Dirty => prettytable::color::RED,
+    }
+}
+
+fn branch_name(repo: &git2::Repository) -> Result<Option<String>> {
+    let path = repo.workdir().unwrap();
+    let h = repo.head()?;
+    if h.is_branch() {
+        let branch = h.shorthand()
+            .ok_or_else(|| format_err!("branch name was not valid UTF-8: {}", path.display()))?;
+        Ok(Some(branch.to_owned()))
+    } else {
+        warn!("Excluding detached HEAD: {}", path.display());
+        Ok(None)
+    }
 }
 
 

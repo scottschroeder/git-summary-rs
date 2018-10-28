@@ -89,7 +89,6 @@ fn uncommitted_changes() -> git2::Status {
 
 
 pub fn summarize_one_git_repo(repo: &git2::Repository, fetch: bool) -> Result<RepoStatus> {
-    trace!("Summarize {:?}", repo.workdir().map(|p| p.display()));
 
     let head = repo.head()?;
     let head_oid = head.resolve()?.target().ok_or_else(|| format_err!("Unable to resolve OID for head"))?;
