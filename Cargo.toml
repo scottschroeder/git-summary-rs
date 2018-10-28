@@ -4,6 +4,19 @@ version = "0.1.0"
 authors = ["Scott Schroeder <scottschroeder@sent.com>"]
 edition = "2015"
 
+description = """
+git-summary is a tool for checking the git status for an
+entire directory tree
+"""
+
+documentation = "https://github.com/scottschroeder/git-summary-rs"
+homepage = "https://github.com/scottschroeder/git-summary-rs"
+repository = "https://github.com/scottschroeder/git-summary-rs"
+readme = "README.md"
+keywords = ["git"]
+categories = ["command-line-utilities"]
+license = "MIT"
+
 [dependencies]
 clap = "2.32.0"
 failure = "0.1.2"
