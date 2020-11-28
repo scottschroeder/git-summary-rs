@@ -18,12 +18,12 @@ categories = ["command-line-utilities"]
 license = "MIT"
 
 [dependencies]
-clap = "2.32.0"
+clap = "2.33.0"
 failure = "0.1.2"
-git2 = "0.7"
+git2 = "0.13.12"
 log = "0.4"
-pretty_env_logger = "0.2"
+pretty_env_logger = "0.4"
 prettytable-rs = "^0.8"
 rayon = "1.0.2"
-url = "1.7.1"
+url = "2.2.0"
 walkdir = "2"

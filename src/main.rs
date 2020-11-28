@@ -164,7 +164,7 @@ fn get_args() -> clap::ArgMatches<'static> {
 }
 
 fn setup_logger(level: u64) {
-    let mut builder = pretty_env_logger::formatted_builder().unwrap();
+    let mut builder = pretty_env_logger::formatted_builder();
     let noisy_modules = &[
         "hyper",
         "mio",
