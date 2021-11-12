@@ -1,10 +1,10 @@
 use git2;
 
-use cache::Cache;
-use net_util::{tcp_check, SocketData};
+use crate::cache::Cache;
+use crate::net_util::{tcp_check, SocketData};
 use std::fmt;
 use url;
-use Result;
+use crate::Result;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct RepoStatus {

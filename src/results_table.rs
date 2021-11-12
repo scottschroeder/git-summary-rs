@@ -1,6 +1,6 @@
 use prettytable::{color, format, Attr, Cell, Row, Table};
 
-use git_util::{RepoSeverity, RepoStatus};
+use crate::git_util::{RepoSeverity, RepoStatus};
 
 pub struct ResultsTable {
     table: Table,

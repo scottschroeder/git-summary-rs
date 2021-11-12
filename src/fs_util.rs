@@ -3,7 +3,7 @@ use std::fs;
 use std::path;
 use walkdir::WalkDir;
 
-use Result;
+use crate::Result;
 
 const GIT_DIR: &str = ".git";
 
