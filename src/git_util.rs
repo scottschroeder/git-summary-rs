@@ -95,7 +95,7 @@ pub fn summarize_one_git_repo(
     let head_oid = head
         .resolve()?
         .target()
-        .ok_or_else(|| format_err!("Unable to resolve OID for head"))?;
+        .ok_or_else(|| anyhow::anyhow!("Unable to resolve OID for head"))?;
 
     let mut status = RepoStatus::default();
 
@@ -108,7 +108,7 @@ pub fn summarize_one_git_repo(
                         upstream_oid = new_upstream_oid;
                     }
                     Err(e) => {
-                        error!(
+                        log::error!(
                             "Could not fetch {}: {}",
                             repo.workdir().unwrap().display(),
                             e
@@ -151,7 +151,7 @@ fn do_fetch(
         parse_remote_from_ref(upstream_ref).and_then(|(remote_name, remote_branch)| {
             repo.find_remote(&remote_name)
                 .map_err(|e| {
-                    format_err!(
+                    anyhow::anyhow!(
                         "Unable to get remote {} for repo {}: {}",
                         remote_name,
                         repo.workdir().unwrap().display(),
@@ -161,24 +161,25 @@ fn do_fetch(
                 .map(|remote| (remote, remote_branch))
         })?;
     if let Some(url_string) = remote.url() {
-        trace!("Check to see if we can reach remote");
+        log::trace!("Check to see if we can reach remote");
 
         match get_url_host(url_string) {
             Ok(socket_data) => {
                 let reachable = netcache.get_or_insert_with(&socket_data, &tcp_check);
                 if !reachable {
-                    bail!("I can't reach the host: {:?}", &socket_data);
+                    anyhow::bail!("I can't reach the host: {:?}", &socket_data);
                 }
             }
             Err(e) => {
-                debug!(
+                log::debug!(
                     "Can't parse url {:?} ({}), assuming git knows what to do...",
-                    url_string, e
+                    url_string,
+                    e
                 );
             }
         }
     }
-    trace!("Actually Do Fetch");
+    log::trace!("Actually Do Fetch");
     let fetch_result = remote.fetch(&[&remote_branch], None, None);
     Ok(fetch_result?)
 }
@@ -190,26 +191,26 @@ fn get_url_host(url_string: &str) -> Result<SocketData> {
         return Ok(SocketData { host, port });
     }
 
-    Err(format_err!("can not understand url: {:?}", git_url))
+    Err(anyhow::anyhow!("can not understand url: {:?}", git_url))
 }
 
 fn parse_remote_from_ref(gitref: git2::Reference) -> Result<(String, String)> {
     if gitref.is_remote() {
         gitref
             .name()
-            .ok_or_else(|| format_err!("gitref can not be coreced into a string to parse"))
+            .ok_or_else(|| anyhow::anyhow!("gitref can not be coreced into a string to parse"))
             .and_then(|refspec| {
                 let segments = refspec.split('/').collect::<Vec<&str>>();
                 if segments.len() >= 4 && segments[0] == "refs" && segments[1] == "remotes" {
                     let x = (segments[2].to_owned(), segments[3].to_owned());
-                    trace!("Using remote: {:?}", x);
+                    log::trace!("Using remote: {:?}", x);
                     Ok(x)
                 } else {
-                    bail!("Can not parse refspec: {:?}", refspec);
+                    anyhow::bail!("Can not parse refspec: {:?}", refspec);
                 }
             })
     } else {
-        bail!("git reference is not a remote object");
+        anyhow::bail!("git reference is not a remote object");
     }
 }
 
@@ -225,7 +226,7 @@ pub fn branch_name(repo: &git2::Repository) -> Option<String> {
     });
 
     if branch.is_none() {
-        warn!("Excluding detached HEAD: {}", path.display());
+        log::warn!("Excluding detached HEAD: {}", path.display());
     }
     branch
 }

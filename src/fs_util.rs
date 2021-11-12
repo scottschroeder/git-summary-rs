@@ -10,7 +10,7 @@ pub fn get_working_dir(user_path: Option<&str>) -> Result<path::PathBuf> {
         let p = fs::canonicalize(s)?;
         let meta = p.metadata()?;
         if !meta.is_dir() {
-            bail!("the path {:?} is not a directory", p);
+            anyhow::bail!("the path {:?} is not a directory", p);
         }
         Ok(p)
     } else {
@@ -78,7 +78,7 @@ where
         .to_str()
         .map(predicate)
         .unwrap_or_else(|| {
-            error!("unable to parse {:?} as str", entry.path().display());
+            log::error!("unable to parse {:?} as str", entry.path().display());
             false
         })
 }

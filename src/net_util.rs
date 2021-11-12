@@ -47,7 +47,7 @@ pub fn tcp_check<T: ToSocketAddrs>(sd: T) -> bool {
     sd.to_socket_addrs()
         .and_then(|addrs| {
             for addr in addrs {
-                trace!("Making connection to: {:?}", addr);
+                log::trace!("Making connection to: {:?}", addr);
                 let _ = TcpStream::connect_timeout(&addr, TCP_TIMEOUT)?;
                 return Ok(true);
             }

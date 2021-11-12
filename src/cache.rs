@@ -60,14 +60,14 @@ where
             Some(mut guard) => {
                 // Stable in 1.31
                 // guard.replace(value);
-                trace!("Performing function call for {:?}", key);
+                log::trace!("Performing function call for {:?}", key);
                 *guard = Some(func(key.clone()));
                 guard.as_ref().unwrap().clone()
             }
 
             // We just wait for a read lock and return the value
             None => {
-                trace!("Looking up {:?}", key);
+                log::trace!("Looking up {:?}", key);
                 entry.read().unwrap().clone().unwrap()
             }
         }

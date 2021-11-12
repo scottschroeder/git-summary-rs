@@ -19,7 +19,7 @@ license = "MIT"
 
 [dependencies]
 clap = "2.33.0"
-failure = "0.1.2"
+anyhow = "1"
 git2 = "0.13.23"
 log = "0.4"
 pretty_env_logger = "0.4"

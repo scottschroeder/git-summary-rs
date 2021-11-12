@@ -1,15 +1,4 @@
-extern crate clap;
-#[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate log;
-extern crate git2;
-extern crate pretty_env_logger;
-extern crate prettytable;
-extern crate rayon;
-extern crate url;
-extern crate walkdir;
-
+use anyhow::Result;
 use clap::{App, Arg};
 use rayon::prelude::*;
 
@@ -22,18 +11,16 @@ mod results_table;
 const PROJECT_NAME: &str = "git-summary";
 const THREAD_POOL_SIZE: usize = 50; // its all I/O, so bump it (and wish we were async)
 
-type Result<T> = std::result::Result<T, failure::Error>;
-
 fn run() -> Result<()> {
     let args = get_args();
     setup_logger(args.occurrences_of("verbosity"));
-    trace!("Args: {:?}", args);
+    log::trace!("Args: {:?}", args);
     let do_fetch = args.is_present("fetch");
 
     let pool_size = if let Some(p_str) = args.value_of("parallel") {
         p_str
             .parse::<usize>()
-            .map_err(|e| format_err!("Could not parse {:?} as integer: {}", p_str, e))?
+            .map_err(|e| anyhow::anyhow!("Could not parse {:?} as integer: {}", p_str, e))?
     } else {
         THREAD_POOL_SIZE
     };
@@ -43,7 +30,7 @@ fn run() -> Result<()> {
         .build_global()?;
 
     let path = fs_util::get_working_dir(args.value_of("path"))?;
-    debug!("Looking for git repos under {:?}", path);
+    log::debug!("Looking for git repos under {:?}", path);
 
     let git_repos = {
         let mut git_paths = fs_util::get_all_repos(
@@ -86,7 +73,7 @@ fn run() -> Result<()> {
         .filter_map(|res| match res {
             Ok(x) => Some(x),
             Err(e) => {
-                error!("{}", e);
+                log::error!("{}", e);
                 None
             }
         })
@@ -95,7 +82,7 @@ fn run() -> Result<()> {
     repos.sort_unstable_by_key(|d| d.0);
 
     let mut table = results_table::ResultsTable::new();
-    info!("Checked {} git repositories.", repos.len());
+    log::info!("Checked {} git repositories.", repos.len());
     for (p, branch, st) in repos {
         if !args.is_present("skip_up_to_date") || !st.is_clean() {
             let repo_name = fs_util::shorten(&path, p).to_string_lossy();
@@ -109,9 +96,9 @@ fn run() -> Result<()> {
 
 fn main() {
     if let Err(e) = run() {
-        error!("{} failed!", PROJECT_NAME);
-        for cause in e.iter_chain() {
-            error!("cause: {}", cause)
+        log::error!("{} failed!", PROJECT_NAME);
+        for cause in e.source() {
+            log::error!("cause: {}", cause)
         }
     }
 }
