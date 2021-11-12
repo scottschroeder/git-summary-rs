@@ -1,9 +1,9 @@
-use git2;
+
 
 use crate::cache::Cache;
 use crate::net_util::{tcp_check, SocketData};
 use std::fmt;
-use url;
+
 use crate::Result;
 
 #[derive(Debug, Default, PartialEq)]

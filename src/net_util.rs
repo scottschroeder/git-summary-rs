@@ -1,7 +1,7 @@
 use std::fmt;
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::time::Duration;
-use url;
+
 
 use std::io;
 use std::vec;

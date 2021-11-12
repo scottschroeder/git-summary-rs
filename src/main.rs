@@ -98,7 +98,7 @@ fn run() -> Result<()> {
     info!("Checked {} git repositories.", repos.len());
     for (p, branch, st) in repos {
         if !args.is_present("skip_up_to_date") || !st.is_clean() {
-            let repo_name = fs_util::shorten(&path, &p).to_string_lossy();
+            let repo_name = fs_util::shorten(&path, p).to_string_lossy();
             table.add_repo(&repo_name, &branch, st);
         }
     }

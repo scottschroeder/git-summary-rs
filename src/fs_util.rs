@@ -57,14 +57,8 @@ fn deep_filter(deep: bool, skip_hidden: bool, entry: &walkdir::DirEntry) -> bool
         return true;
     }
     if deep {
-        return false;
-    } else if entry.depth() > 2 {
-        //trace!("Filtering {:?} d={}", entry.path().display(), entry.depth());
-        true
-    } else {
-        //trace!("Keeping {:?} d={}", entry.path().display(), entry.depth());
         false
-    }
+    } else { entry.depth() > 2 }
 }
 
 fn is_git_dir(entry: &walkdir::DirEntry) -> bool {
@@ -72,7 +66,7 @@ fn is_git_dir(entry: &walkdir::DirEntry) -> bool {
 }
 
 fn is_hidden(entry: &walkdir::DirEntry) -> bool {
-    check_entry_filename(entry, |s| s.starts_with(".") && !(s == GIT_DIR))
+    check_entry_filename(entry, |s| s.starts_with('.') && s != GIT_DIR)
 }
 
 fn check_entry_filename<F>(entry: &walkdir::DirEntry, predicate: F) -> bool
