@@ -1,8 +1,9 @@
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
-use std::fmt;
-use std::hash::Hash;
-use std::sync::{Arc, Mutex, RwLock};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    fmt,
+    hash::Hash,
+    sync::{Arc, Mutex, RwLock},
+};
 
 #[derive(Debug)]
 pub struct Cache<K: Hash + Eq, V> {

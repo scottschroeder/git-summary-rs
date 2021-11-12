@@ -1,6 +1,4 @@
-use std::env;
-use std::fs;
-use std::path;
+use std::{env, fs, path};
 use walkdir::WalkDir;
 
 use crate::Result;
@@ -58,7 +56,9 @@ fn deep_filter(deep: bool, skip_hidden: bool, entry: &walkdir::DirEntry) -> bool
     }
     if deep {
         false
-    } else { entry.depth() > 2 }
+    } else {
+        entry.depth() > 2
+    }
 }
 
 fn is_git_dir(entry: &walkdir::DirEntry) -> bool {

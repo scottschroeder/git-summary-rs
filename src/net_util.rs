@@ -1,10 +1,10 @@
-use std::fmt;
-use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
-use std::time::Duration;
+use std::{
+    fmt,
+    net::{SocketAddr, TcpStream, ToSocketAddrs},
+    time::Duration,
+};
 
-
-use std::io;
-use std::vec;
+use std::{io, vec};
 
 // TODO configurable
 const TCP_TIMEOUT: Duration = Duration::from_secs(5);

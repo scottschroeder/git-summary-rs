@@ -1,7 +1,7 @@
-
-
-use crate::cache::Cache;
-use crate::net_util::{tcp_check, SocketData};
+use crate::{
+    cache::Cache,
+    net_util::{tcp_check, SocketData},
+};
 use std::fmt;
 
 use crate::Result;
