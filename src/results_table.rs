@@ -33,11 +33,9 @@ impl ResultsTable {
         self.has_rows = true
     }
 
-    pub fn printstd(&self) -> usize {
+    pub fn printstd(&self) {
         if self.has_rows {
             self.table.printstd()
-        } else {
-            0
         }
     }
 }
